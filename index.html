@@ -7,7 +7,8 @@
   <meta name="description" content="一杯の記憶を写真に残す。20杯のラーメン、20通りの美しさ。">
   <meta property="og:title"       content="RAMEN ARCHIVE">
   <meta property="og:description" content="一杯の記憶を写真に残す。湯気の立ち上る一瞬を切り取った食写真ポートフォリオ。">
-  <meta property="og:image"       content="images/ramen_15.jpg">
+  <meta property="og:image"       content="https://haracchi1202.github.io/ramen-archive/images/ramen_15.jpg">
+  <meta property="og:url"         content="https://haracchi1202.github.io/ramen-archive/">
   <meta property="og:type"        content="website">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,6 +27,7 @@
       --accent-dark:     #d48fa3;
       --accent-soft:     #fff0f3;
       --accent-shadow:   rgba(232, 164, 184, 0.4);
+      --accent-text:     #9b4d6b; /* darkened for WCAG AA contrast ≥4.5:1 on white */
 
       --bg:              #ffffff;
       --bg-warm:         #faf9f5;
@@ -75,7 +77,7 @@
       display: block;
       font-size: 11px;
       letter-spacing: 0.5em;
-      color: var(--accent);
+      color: var(--accent-text);
       text-transform: uppercase;
       font-weight: 600;
       text-align: center;
@@ -125,7 +127,7 @@
       font-size: 15px;
       font-weight: 400;
       letter-spacing: 0.35em;
-      color: var(--accent);
+      color: var(--accent-text);
       text-decoration: none;
     }
 
@@ -208,7 +210,7 @@
       display: block;
       font-size: 11px;
       letter-spacing: 0.5em;
-      color: var(--accent);
+      color: var(--accent-text);
       text-transform: uppercase;
       font-weight: 600;
       margin-bottom: var(--sp-xl);
@@ -358,8 +360,8 @@
     }
     .filter-tab.active,
     .filter-tab:hover {
-      border-color: var(--accent);
-      color: var(--accent);
+      border-color: var(--accent-text);
+      color: var(--accent-text);
       background: var(--accent-soft);
     }
 
@@ -413,7 +415,7 @@
     }
     .card-badge {
       background: var(--accent-soft);
-      color: var(--accent);
+      color: var(--accent-text);
       border-radius: 50px;
       padding: 3px 12px;
       font-size: 10px;
@@ -511,7 +513,7 @@
       font-family: var(--font-serif);
       font-size: 15px;
       letter-spacing: 0.35em;
-      color: var(--accent);
+      color: var(--accent-text);
       text-decoration: none;
     }
 
@@ -539,15 +541,23 @@
        LIGHTBOX
     ================================================================ */
     .lightbox {
-      display: none;
       position: fixed;
       inset: 0;
       z-index: 200;
       background: rgba(255, 255, 255, 0.97);
+      display: flex;
       align-items: center;
       justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      visibility: hidden;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
     }
-    .lightbox.open { display: flex; }
+    .lightbox.open {
+      opacity: 1;
+      pointer-events: auto;
+      visibility: visible;
+    }
 
     .lightbox-img-wrap {
       max-width: 80vw;
@@ -673,7 +683,7 @@
     <li><a href="#concept" onclick="closeNav()">About</a></li>
     <li><a href="#contact" onclick="closeNav()">Contact</a></li>
   </ul>
-  <button class="nav-toggle" id="nav-toggle" aria-label="メニューを開く">
+  <button class="nav-toggle" id="nav-toggle" aria-label="メニュー" aria-expanded="false">
     <span></span><span></span><span></span>
   </button>
 </nav>
@@ -685,7 +695,9 @@
   <img class="hero-img"
        src="images/ramen_15.jpg"
        alt="ラーメン食写真ポートフォリオ — RAMEN ARCHIVE"
-       loading="eager">
+       loading="eager"
+       fetchpriority="high"
+       decoding="async">
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <span class="hero-eyebrow">Food Photography Portfolio</span>
@@ -800,7 +812,7 @@
   <button class="lightbox-close" id="lb-close" aria-label="閉じる">×</button>
   <button class="lightbox-nav lightbox-prev" id="lb-prev" aria-label="前の画像">&#8249;</button>
   <div class="lightbox-img-wrap">
-    <img id="lightbox-img" src="" alt="">
+    <img id="lightbox-img" alt="">
   </div>
   <button class="lightbox-nav lightbox-next" id="lb-next" aria-label="次の画像">&#8250;</button>
   <p class="lightbox-counter" id="lightbox-counter"></p>
@@ -848,21 +860,40 @@
       var card = document.createElement('div');
       card.className = 'card fade-in';
       card.style.transitionDelay = (i % 3) * 0.07 + 's';
-      card.innerHTML =
-        '<div class="card-img-wrap">' +
-          '<img src="' + img.src + '" alt="' + img.label + ' — ' + img.catLabel + 'ラーメン" loading="lazy">' +
-        '</div>' +
-        '<div class="card-body">' +
-          '<span class="card-label">' + img.label + '</span>' +
-          '<span class="card-badge">' + img.catLabel + '</span>' +
-        '</div>';
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', img.label + ' — ' + img.catLabel + 'ラーメン を拡大表示');
 
-      (function(idx) {
-        card.addEventListener('click', function() {
-          currentIndex = idx;
-          openLightbox();
+      /* DOM API construction — avoids innerHTML injection surface */
+      var wrap = document.createElement('div');
+      wrap.className = 'card-img-wrap';
+      var photo = document.createElement('img');
+      photo.src = img.src;
+      photo.alt = img.label + ' — ' + img.catLabel + 'ラーメン';
+      photo.loading = 'lazy';
+      wrap.appendChild(photo);
+
+      var body = document.createElement('div');
+      body.className = 'card-body';
+      var lbl = document.createElement('span');
+      lbl.className = 'card-label';
+      lbl.textContent = img.label;
+      var badge = document.createElement('span');
+      badge.className = 'card-badge';
+      badge.textContent = img.catLabel;
+      body.appendChild(lbl);
+      body.appendChild(badge);
+
+      card.appendChild(wrap);
+      card.appendChild(body);
+
+      (function(idx, el) {
+        function activate() { currentIndex = idx; openLightbox(el); }
+        el.addEventListener('click', activate);
+        el.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activate(); }
         });
-      })(i);
+      })(i, card);
 
       grid.appendChild(card);
     });
@@ -881,14 +912,21 @@
   });
 
   /* ── Lightbox ── */
-  function openLightbox() {
+  var _lbTrigger = null;
+
+  function openLightbox(triggerEl) {
+    _lbTrigger = triggerEl || null;
     updateLightboxImg();
     document.getElementById('lightbox').classList.add('open');
     document.body.style.overflow = 'hidden';
+    /* Move focus into the dialog */
+    document.getElementById('lb-close').focus();
   }
   function closeLightbox() {
     document.getElementById('lightbox').classList.remove('open');
     document.body.style.overflow = '';
+    /* Restore focus to the card that opened the lightbox */
+    if (_lbTrigger) { _lbTrigger.focus(); _lbTrigger = null; }
   }
   function lightboxNav(dir) {
     currentIndex = (currentIndex + dir + filteredImages.length) % filteredImages.length;
@@ -921,11 +959,15 @@
   }, { passive: true });
 
   /* ── Mobile nav ── */
-  document.getElementById('nav-toggle').addEventListener('click', function() {
-    document.getElementById('nav-links').classList.toggle('open');
+  var navToggle = document.getElementById('nav-toggle');
+  var navLinks  = document.getElementById('nav-links');
+  navToggle.addEventListener('click', function() {
+    var isOpen = navLinks.classList.toggle('open');
+    navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
   function closeNav() {
-    document.getElementById('nav-links').classList.remove('open');
+    navLinks.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
   }
 
   /* ── Intersection Observer for fade-in ── */
